@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  portainer:
+    image: portainer/portainer-ce
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - "9999:9000"  # Portainer's default port
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - portainer_network
+
+  portainer-init:
+    image: curlimages/curl:latest
+    container_name: portainer-init
+    depends_on:
+      - portainer
+    entrypoint: >
+      /bin/sh -c "
+      until curl -s http://portainer:9000/api/status | grep 'Status: running'; do
+        echo 'Waiting for Portainer to be ready...';
+        sleep 5;
+      done;
+      echo 'Initializing Portainer admin user...';
+      curl -X POST -H 'Content-Type: application/json' \
+        -d '{\"Username\":\"admin\",\"Password\":\"$ADMIN_PASSWORD\"}' \
+        http://portainer:9000/api/users/admin/init
+      "
+    environment:
+      - ADMIN_PASSWORD=root  # **Set your desired admin password here**
+    networks:
+      - portainer_network
+    restart: "no"  # Ensure this container runs only once
+
+volumes:
+  portainer_data:
+
+networks:
+  portainer_network:
+    driver: bridge
+
+
+# username : admin
+# password : Xyberpunk.123
